@@ -1,4 +1,4 @@
-"""Deterministic extraction of likely tender requirements from plain text."""
+"""Deterministic extraction of likely tender requirements from text."""
 
 import re
 
@@ -23,8 +23,7 @@ def classify_requirement(text: str) -> RequirementCategory:
     return RequirementCategory.OTHER
 
 
-def extract_requirements(text: str) -> list[Requirement]:
-    """Extract requirement-like lines without pretending to interpret the tender."""
+def extract_requirements(text: str, source_prefix: str = "Input line") -> list[Requirement]:
     requirements: list[Requirement] = []
     for line_number, raw_line in enumerate(text.splitlines(), start=1):
         line = re.sub(r"^\s*(?:[-*•]|\d+[.)])\s*", "", raw_line).strip()
@@ -41,7 +40,17 @@ def extract_requirements(text: str) -> list[Requirement]:
                     id=f"REQ-{len(requirements) + 1:03d}",
                     text=line,
                     category=classify_requirement(line),
-                    source_reference=f"Input line {line_number}",
+                    source_reference=f"{source_prefix} {line_number}",
                 )
             )
+    return requirements
+
+
+def extract_requirements_from_pages(pages: list[tuple[int, str]]) -> list[Requirement]:
+    requirements: list[Requirement] = []
+    for page_number, text in pages:
+        for requirement in extract_requirements(text, source_prefix="PDF page"):
+            requirement.id = f"REQ-{len(requirements) + 1:03d}"
+            requirement.source_reference = f"PDF page {page_number}"
+            requirements.append(requirement)
     return requirements
